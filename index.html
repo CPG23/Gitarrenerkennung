@@ -12,8 +12,8 @@
         <div class="brand-row">
           <div class="brand-mark" aria-hidden="true">~</div>
           <div>
-            <h1>Musik Lauscher</h1>
-            <p>Hoert zu, erkennt Toene und uebersetzt sie in Gitarrenideen.</p>
+            <h1>Gitarrenerkennung</h1>
+            <p>Song abspielen, zuhoeren lassen, Gitarren-TAB erhalten.</p>
           </div>
         </div>
 
@@ -30,7 +30,7 @@
           </svg>
           <div class="note-orbit">
             <span id="currentNote">--</span>
-            <small id="currentFrequency">Warte auf Ton</small>
+            <small id="currentFrequency">Bereit</small>
           </div>
         </div>
 
@@ -52,54 +52,16 @@
       </section>
 
       <section class="results-grid">
-        <article class="panel music-type">
-          <div class="panel-title"><span aria-hidden="true">M</span><h2>Musikart</h2></div>
-          <strong id="musicType">Noch zu wenig Material</strong>
-          <p>Diese Einschaetzung entsteht lokal aus Tempo, Tonvielfalt und Energieverteilung.</p>
-        </article>
-
-        <article class="panel stat-panel">
-          <div class="panel-title"><span aria-hidden="true">T</span><h2>Tempo</h2></div>
-          <strong id="tempo">--</strong>
-          <p id="elapsed">Noch keine Aufnahme</p>
-        </article>
-
-        <article class="panel notes-panel">
-          <div class="panel-title"><span aria-hidden="true">N</span><h2>Erkannte Noten</h2></div>
-          <div class="note-list" id="noteList">
-            <p class="empty">Druecke auf Zuhoeren und spiele Musik in der Naehe des Mikrofons.</p>
-          </div>
-        </article>
-
-        <article class="panel guitar-panel">
-          <div class="panel-title"><span aria-hidden="true">G</span><h2>Auf Gitarre spielen</h2></div>
-          <div id="guitarHelp">
-            <p class="empty">Sobald ein Ton erkannt wird, erscheinen hier spielbare Saiten und Buende.</p>
-          </div>
-        </article>
-
-        <article class="panel song-panel">
-          <div class="panel-title"><span aria-hidden="true">L</span><h2>Song Ablauf</h2></div>
-          <div id="songTimeline">
-            <p class="empty">Starte eine Aufnahme. Die App sammelt dann eine spielbare Tonfolge.</p>
-          </div>
-        </article>
-
         <article class="panel tab-panel">
           <div class="panel-title"><span aria-hidden="true">TAB</span><h2>Gitarren-Tab</h2></div>
           <pre id="guitarTab">Noch keine Tabulatur vorhanden.</pre>
         </article>
 
         <article class="panel chord-panel">
-          <div class="panel-title"><span aria-hidden="true">A</span><h2>Moegliche Akkorde</h2></div>
+          <div class="panel-title"><span aria-hidden="true">A</span><h2>Akkorde fuer Begleitung</h2></div>
           <div class="chord-list" id="chordList">
             <p class="empty">Fuer Akkorde braucht die App mehrere stabile Noten.</p>
           </div>
-        </article>
-
-        <article class="panel scale-panel">
-          <div class="panel-title"><span aria-hidden="true">S</span><h2>Tonmaterial</h2></div>
-          <div class="chips" id="toneChips"><span>--</span></div>
         </article>
       </section>
     </main>
