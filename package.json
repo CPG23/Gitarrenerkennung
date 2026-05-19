@@ -1,0 +1,7 @@
+{
+  "scripts": {
+    "dev": "node server.mjs"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
