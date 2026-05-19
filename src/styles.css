@@ -236,6 +236,32 @@ h2 {
   color: rgba(21, 33, 42, 0.72);
 }
 
+.song-tools {
+  display: grid;
+  grid-template-columns: auto;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.song-tools button {
+  height: 44px;
+  border-radius: 8px;
+}
+
+.song-tools button {
+  padding: 0 14px;
+  border: 0;
+  color: #122018;
+  font-weight: 800;
+  background: #fbbf24;
+  cursor: pointer;
+}
+
+.song-tools button:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
 .chord-card span {
   color: rgba(21, 33, 42, 0.62);
   font-size: 0.92rem;
