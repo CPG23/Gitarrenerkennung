@@ -226,9 +226,14 @@ h2 {
   text-transform: uppercase;
 }
 
+.song-panel,
 .tab-panel,
 .chord-panel {
   grid-column: span 2;
+}
+
+.song-panel p {
+  color: rgba(21, 33, 42, 0.72);
 }
 
 .chord-card span {
@@ -344,6 +349,7 @@ h2 {
     grid-template-columns: 1fr;
   }
 
+  .song-panel,
   .tab-panel,
   .chord-panel {
     grid-column: span 1;
