@@ -23,6 +23,7 @@ const CHORDS = [
   { name: "F Moll", notes: [5, 8, 0], shape: "133111" },
   { name: "G Moll", notes: [7, 10, 2], shape: "355333" },
 ];
+const AUDD_API_TOKEN = "fcda76a39370412486f19a29b0997e29";
 
 const ui = {
   listenButton: document.querySelector("#listenButton"),
@@ -33,6 +34,7 @@ const ui = {
   permissionError: document.querySelector("#permissionError"),
   levelBar: document.querySelector("#levelBar"),
   levelText: document.querySelector("#levelText"),
+  identifyButton: document.querySelector("#identifyButton"),
   songName: document.querySelector("#songName"),
   chordList: document.querySelector("#chordList"),
   guitarTab: document.querySelector("#guitarTab"),
@@ -48,6 +50,7 @@ let lastPitchAt = 0;
 let noteTimeline = [];
 let activeTimelineNote = null;
 let state = freshState();
+let isIdentifying = false;
 
 function freshState() {
   return {
@@ -154,11 +157,78 @@ function resetAnalysis() {
   startedAt = audioContext ? performance.now() : 0;
   ui.currentNote.textContent = "--";
   ui.currentFrequency.textContent = audioContext ? "Hoert zu" : "Bereit";
-  ui.songName.textContent = "Song-Erkennung ist ohne externen Erkennungsdienst noch nicht aktiv.";
   ui.levelBar.style.width = "0%";
   ui.levelText.textContent = "0%";
   setWave([]);
   render();
+}
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function getAudioStream() {
+  if (stream) return stream;
+  return navigator.mediaDevices.getUserMedia({
+    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+  });
+}
+
+async function recordSongSample(sourceStream, durationMs = 9000) {
+  const chunks = [];
+  const recorder = new MediaRecorder(sourceStream);
+  recorder.addEventListener("dataavailable", (event) => {
+    if (event.data.size) chunks.push(event.data);
+  });
+  recorder.start();
+  await wait(durationMs);
+  recorder.stop();
+  await new Promise((resolve) => recorder.addEventListener("stop", resolve, { once: true }));
+  return new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
+}
+
+async function identifySong() {
+  if (isIdentifying) return;
+  isIdentifying = true;
+  ui.identifyButton.disabled = true;
+  ui.songName.textContent = "Hoere 9 Sekunden zu und erkenne den Song...";
+
+  let temporaryStream = null;
+  try {
+    const sourceStream = stream || await getAudioStream();
+    if (!stream) temporaryStream = sourceStream;
+    const audioBlob = await recordSongSample(sourceStream);
+    const formData = new FormData();
+    formData.append("api_token", AUDD_API_TOKEN);
+    formData.append("return", "spotify,apple_music");
+    formData.append("file", audioBlob, "song-sample.webm");
+
+    const response = await fetch("https://api.audd.io/", {
+      method: "POST",
+      body: formData,
+    });
+    const data = await response.json();
+
+    if (data.status !== "success") {
+      ui.songName.textContent = data.error?.error_message || "Song-Erkennung fehlgeschlagen.";
+      return;
+    }
+    if (!data.result) {
+      ui.songName.textContent = "Kein Song erkannt. Spiele den Song lauter oder laenger ab.";
+      return;
+    }
+
+    const artist = data.result.artist || "Unbekannter Kuenstler";
+    const title = data.result.title || "Unbekannter Titel";
+    const album = data.result.album ? ` (${data.result.album})` : "";
+    ui.songName.textContent = `${artist} - ${title}${album}`;
+  } catch (error) {
+    ui.songName.textContent = "Song-Erkennung nicht moeglich. Token, Internet oder Mikrofon pruefen.";
+  } finally {
+    if (temporaryStream) temporaryStream.getTracks().forEach((track) => track.stop());
+    isIdentifying = false;
+    ui.identifyButton.disabled = false;
+  }
 }
 
 function addTimelineNote(note, midi, frequency, positions) {
@@ -271,9 +341,7 @@ async function startListening() {
   ui.permissionError.hidden = true;
   resetAnalysis();
   try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
-    });
+    stream = await getAudioStream();
     audioContext = new AudioContext();
     const source = audioContext.createMediaStreamSource(stream);
     analyser = audioContext.createAnalyser();
@@ -287,6 +355,7 @@ async function startListening() {
     ui.currentFrequency.textContent = "Hoert zu";
     ui.listenButton.innerHTML = `<span aria-hidden="true">x</span><span>Stoppen</span>`;
     animationId = requestAnimationFrame(analyzeFrame);
+    identifySong();
   } catch (error) {
     ui.permissionError.textContent = "Mikrofonzugriff wurde nicht erlaubt oder ist in diesem Browser nicht verfuegbar.";
     ui.permissionError.hidden = false;
@@ -297,6 +366,7 @@ ui.listenButton.addEventListener("click", () => {
   if (audioContext) stopListening();
   else startListening();
 });
+ui.identifyButton.addEventListener("click", identifySong);
 ui.resetButton.addEventListener("click", resetAnalysis);
 window.addEventListener("beforeunload", stopListening);
 setWave([]);
