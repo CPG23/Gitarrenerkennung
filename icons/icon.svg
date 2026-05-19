@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Gitarrenerkennung Icon">
+  <rect width="512" height="512" rx="96" fill="#18232d"/>
+  <circle cx="256" cy="256" r="164" fill="#fbbf24"/>
+  <circle cx="256" cy="256" r="126" fill="#f5f3ee"/>
+  <path d="M160 314c44-78 148-78 192 0" fill="none" stroke="#14b8a6" stroke-width="28" stroke-linecap="round"/>
+  <path d="M170 246c50-42 122-42 172 0" fill="none" stroke="#ef4444" stroke-width="22" stroke-linecap="round"/>
+  <path d="M158 194h196" stroke="#18232d" stroke-width="18" stroke-linecap="round"/>
+  <path d="M202 150v214M256 134v244M310 150v214" stroke="#18232d" stroke-width="14" stroke-linecap="round"/>
+  <circle cx="256" cy="256" r="30" fill="#18232d"/>
+</svg>
