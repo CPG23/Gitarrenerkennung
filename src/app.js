@@ -33,14 +33,7 @@ const ui = {
   permissionError: document.querySelector("#permissionError"),
   levelBar: document.querySelector("#levelBar"),
   levelText: document.querySelector("#levelText"),
-  musicType: document.querySelector("#musicType"),
-  tempo: document.querySelector("#tempo"),
-  elapsed: document.querySelector("#elapsed"),
-  noteList: document.querySelector("#noteList"),
-  guitarHelp: document.querySelector("#guitarHelp"),
   chordList: document.querySelector("#chordList"),
-  toneChips: document.querySelector("#toneChips"),
-  songTimeline: document.querySelector("#songTimeline"),
   guitarTab: document.querySelector("#guitarTab"),
 };
 
@@ -49,8 +42,6 @@ let analyser = null;
 let stream = null;
 let animationId = null;
 let startedAt = 0;
-let lastPeak = 0;
-let detectedNotes = [];
 let noteTimeline = [];
 let activeTimelineNote = null;
 let state = freshState();
@@ -58,10 +49,7 @@ let state = freshState();
 function freshState() {
   return {
     histogram: Array(12).fill(0),
-    beatPeaks: [],
     samples: 0,
-    lowEnergy: 0,
-    highEnergy: 0,
   };
 }
 
@@ -121,33 +109,6 @@ function chordScore(chord) {
   return chordHits / allHits;
 }
 
-function getBpm() {
-  if (state.beatPeaks.length < 4) return 0;
-  const intervals = state.beatPeaks.slice(1).map((peak, index) => peak - state.beatPeaks[index]);
-  const average = intervals.reduce((sum, value) => sum + value, 0) / intervals.length;
-  return Math.round(60000 / average);
-}
-
-function strongestNotes() {
-  return state.histogram
-    .map((count, index) => ({ count, index, name: NOTE_NAMES[index] }))
-    .filter((item) => item.count > 0)
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 6);
-}
-
-function classifyMusic() {
-  const bpm = getBpm();
-  const spread = strongestNotes().length;
-  if (state.samples < 40) return "Noch zu wenig Material";
-  if (spread <= 3 && bpm < 85) return "Ruhige Melodie / Ballade";
-  if (bpm > 118 && state.highEnergy > state.lowEnergy * 1.3) return "Pop, Rock oder tanzbare Musik";
-  if (spread > 7 && bpm < 110) return "Melodisch komplex, moeglich Jazz/Folk";
-  if (state.lowEnergy > state.highEnergy * 1.4) return "Basslastige Musik";
-  if (bpm >= 85 && bpm <= 118) return "Mittleres Tempo, wahrscheinlich Pop/Folk";
-  return "Unklare Mischung";
-}
-
 function setWave(data) {
   const points = data.length ? data : Array.from({ length: 60 }, (_, i) => Math.sin(i / 4) * 0.08);
   const path = points
@@ -170,20 +131,6 @@ function chordBox(shape) {
 }
 
 function render() {
-  const bpm = getBpm();
-  const topNotes = strongestNotes();
-  ui.musicType.textContent = classifyMusic();
-  ui.tempo.textContent = bpm ? `${bpm} BPM` : "--";
-  ui.elapsed.textContent = startedAt ? `${((performance.now() - startedAt) / 1000).toFixed(1)} Sekunden analysiert` : "Noch keine Aufnahme";
-
-  ui.noteList.innerHTML = detectedNotes.length
-    ? detectedNotes.map((note) => `<div class="note-card"><strong>${note.label}</strong><span>${note.frequency.toFixed(1)} Hz</span></div>`).join("")
-    : `<p class="empty">Druecke auf Zuhoeren und spiele Musik in der Naehe des Mikrofons.</p>`;
-
-  ui.toneChips.innerHTML = topNotes.length
-    ? topNotes.map((note) => `<span>${note.name}</span>`).join("")
-    : `<span>--</span>`;
-
   const likelyChords = CHORDS.map((chord) => ({ ...chord, score: chordScore(chord) }))
     .filter((chord) => chord.score > 0.38)
     .sort((a, b) => b.score - a.score)
@@ -192,21 +139,18 @@ function render() {
     ? likelyChords.map((chord) => `<div class="chord-card"><div><strong>${chord.name}</strong><span>Griff: ${chord.shape}</span></div>${chordBox(chord.shape)}</div>`).join("")
     : `<p class="empty">Fuer Akkorde braucht die App mehrere stabile Noten.</p>`;
 
-  renderSongTimeline();
   renderGuitarTab();
 }
 
 function resetAnalysis() {
-  detectedNotes = [];
   noteTimeline = [];
   activeTimelineNote = null;
   state = freshState();
   startedAt = audioContext ? performance.now() : 0;
   ui.currentNote.textContent = "--";
-  ui.currentFrequency.textContent = "Warte auf Ton";
+  ui.currentFrequency.textContent = audioContext ? "Hoert zu" : "Bereit";
   ui.levelBar.style.width = "0%";
   ui.levelText.textContent = "0%";
-  ui.guitarHelp.innerHTML = `<p class="empty">Sobald ein Ton erkannt wird, erscheinen hier spielbare Saiten und Buende.</p>`;
   setWave([]);
   render();
 }
@@ -243,21 +187,9 @@ function addTimelineNote(note, midi, frequency, positions) {
   if (noteTimeline.length > 96) noteTimeline.shift();
 }
 
-function renderSongTimeline() {
-  ui.songTimeline.innerHTML = noteTimeline.length
-    ? `<div class="timeline-list">${noteTimeline.slice(-24).map((entry) => `
-        <div class="timeline-item">
-          <strong>${entry.label}</strong>
-          <span>${entry.start.toFixed(1)}s</span>
-          <em>${entry.string}-Saite, Bund ${entry.fret}</em>
-        </div>
-      `).join("")}</div>`
-    : `<p class="empty">Starte eine Aufnahme. Die App sammelt dann eine spielbare Tonfolge.</p>`;
-}
-
 function renderGuitarTab() {
   if (!noteTimeline.length) {
-    ui.guitarTab.textContent = "Noch keine Tabulatur vorhanden.";
+    ui.guitarTab.textContent = "Druecke auf Zuhoeren und spiele den Song ab.\nDie erkannte Melodie erscheint hier als Gitarren-TAB.";
     return;
   }
 
@@ -275,8 +207,8 @@ function renderGuitarTab() {
     }
   }
 
-  const notes = cleaned.map((entry) => `${entry.label}@${entry.start.toFixed(1)}s`).join("  ");
-  ui.guitarTab.textContent = `${strings.map((name) => rows[name]).join("\n")}\n\nNoten: ${notes || "Noch keine spielbaren Noten erkannt."}`;
+  const notes = cleaned.map((entry) => `${entry.label} ${entry.start.toFixed(1)}s`).join("  ");
+  ui.guitarTab.textContent = `${strings.map((name) => rows[name]).join("\n")}\n\nAblauf: ${notes || "Noch keine spielbaren Noten erkannt."}`;
 }
 
 function stopListening() {
@@ -287,15 +219,14 @@ function stopListening() {
   audioContext = null;
   analyser = null;
   startedAt = 0;
+  ui.currentFrequency.textContent = noteTimeline.length ? "TAB erstellt" : "Bereit";
   ui.listenButton.innerHTML = `<span aria-hidden="true">o</span><span>Zuhoeren</span>`;
 }
 
 function analyzeFrame() {
   if (!analyser || !audioContext) return;
   const timeData = new Float32Array(analyser.fftSize);
-  const frequencyData = new Uint8Array(analyser.frequencyBinCount);
   analyser.getFloatTimeDomainData(timeData);
-  analyser.getByteFrequencyData(frequencyData);
 
   const pitch = detectPitch(timeData, audioContext.sampleRate);
   const rms = Math.sqrt(timeData.reduce((sum, value) => sum + value * value, 0) / timeData.length);
@@ -304,37 +235,15 @@ function analyzeFrame() {
   ui.levelText.textContent = `${Math.round(level * 100)}%`;
   setWave(Array.from(timeData.filter((_, index) => index % 18 === 0)).slice(0, 80));
 
-  let lowEnergy = 0;
-  let highEnergy = 0;
-  for (let i = 0; i < frequencyData.length; i += 1) {
-    if (i < frequencyData.length * 0.18) lowEnergy += frequencyData[i];
-    if (i > frequencyData.length * 0.38) highEnergy += frequencyData[i];
-  }
-
-  if (rms > 0.05 && performance.now() - lastPeak > 260) {
-    lastPeak = performance.now();
-    state.beatPeaks = [...state.beatPeaks.slice(-18), performance.now()];
-  }
-
   if (pitch) {
     const midi = frequencyToMidi(pitch.frequency);
     const note = midiToNote(midi);
     const positions = guitarPositions(midi);
     ui.currentNote.textContent = note.label;
     ui.currentFrequency.textContent = `${pitch.frequency.toFixed(1)} Hz`;
-    detectedNotes = [{ ...note, midi, frequency: pitch.frequency, positions }, ...detectedNotes.filter((item) => item.label !== note.label)].slice(0, 10);
     addTimelineNote(note, midi, pitch.frequency, positions);
     state.histogram[note.index] += 1;
     state.samples += 1;
-    state.lowEnergy = state.lowEnergy * 0.92 + lowEnergy * 0.08;
-    state.highEnergy = state.highEnergy * 0.92 + highEnergy * 0.08;
-    ui.guitarHelp.innerHTML = `<div class="guitar-help">
-      <p>Aktueller Ton: <strong>${note.label}</strong></p>
-      <div class="positions">${positions.length ? positions.map((position) => `<span>${position.string}-Saite, Bund ${position.fret}</span>`).join("") : `<span>Ton liegt ausserhalb der einfachen Gitarrenlage.</span>`}</div>
-    </div>`;
-  } else {
-    state.lowEnergy = state.lowEnergy * 0.94 + lowEnergy * 0.06;
-    state.highEnergy = state.highEnergy * 0.94 + highEnergy * 0.06;
   }
 
   render();
@@ -355,7 +264,6 @@ async function startListening() {
     analyser.smoothingTimeConstant = 0.72;
     source.connect(analyser);
     startedAt = performance.now();
-    lastPeak = 0;
     ui.listenButton.innerHTML = `<span aria-hidden="true">x</span><span>Stoppen</span>`;
     animationId = requestAnimationFrame(analyzeFrame);
   } catch (error) {
