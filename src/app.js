@@ -36,6 +36,8 @@ const ui = {
   levelText: document.querySelector("#levelText"),
   identifyButton: document.querySelector("#identifyButton"),
   songName: document.querySelector("#songName"),
+  songLinks: document.querySelector("#songLinks"),
+  playSteps: document.querySelector("#playSteps"),
   chordList: document.querySelector("#chordList"),
   guitarTab: document.querySelector("#guitarTab"),
 };
@@ -108,7 +110,15 @@ function guitarPositions(midi) {
 
 function preferredGuitarPosition(midi) {
   const positions = guitarPositions(midi);
-  return positions.find((position) => position.fret <= 12) || positions[0] || null;
+  const previous = activeTimelineNote;
+  if (!previous) return positions.find((position) => position.fret <= 12) || positions[0] || null;
+
+  return positions
+    .map((position) => ({
+      ...position,
+      score: Math.abs(position.fret - previous.fret) + (position.string === previous.string ? 0 : 2),
+    }))
+    .sort((a, b) => a.score - b.score)[0] || null;
 }
 
 function chordScore(chord) {
@@ -148,6 +158,7 @@ function render() {
     : `<p class="empty">Fuer Akkorde braucht die App mehrere stabile Noten.</p>`;
 
   renderGuitarTab();
+  renderPlaySteps();
 }
 
 function resetAnalysis() {
@@ -157,6 +168,8 @@ function resetAnalysis() {
   startedAt = audioContext ? performance.now() : 0;
   ui.currentNote.textContent = "--";
   ui.currentFrequency.textContent = audioContext ? "Hoert zu" : "Bereit";
+  ui.songLinks.hidden = true;
+  ui.songLinks.innerHTML = "";
   ui.levelBar.style.width = "0%";
   ui.levelText.textContent = "0%";
   setWave([]);
@@ -222,6 +235,7 @@ async function identifySong() {
     const title = data.result.title || "Unbekannter Titel";
     const album = data.result.album ? ` (${data.result.album})` : "";
     ui.songName.textContent = `${artist} - ${title}${album}`;
+    renderSongLinks(artist, title);
   } catch (error) {
     ui.songName.textContent = "Song-Erkennung nicht moeglich. Token, Internet oder Mikrofon pruefen.";
   } finally {
@@ -229,6 +243,15 @@ async function identifySong() {
     isIdentifying = false;
     ui.identifyButton.disabled = false;
   }
+}
+
+function renderSongLinks(artist, title) {
+  const query = encodeURIComponent(`${artist} ${title}`);
+  ui.songLinks.hidden = false;
+  ui.songLinks.innerHTML = `
+    <a href="https://www.google.com/search?q=${query}+guitar+chords" target="_blank" rel="noreferrer">Akkorde suchen</a>
+    <a href="https://www.google.com/search?q=${query}+guitar+tab" target="_blank" rel="noreferrer">Original-TAB suchen</a>
+  `;
 }
 
 function addTimelineNote(note, midi, frequency, positions) {
@@ -271,20 +294,47 @@ function renderGuitarTab() {
 
   const strings = ["e", "B", "G", "D", "A", "E"];
   const rows = Object.fromEntries(strings.map((name) => [name, `${name}|`]));
+  let timeRow = "t|";
   const cleaned = noteTimeline
     .filter((entry) => entry.string !== "-" && entry.fret !== "-")
-    .slice(-32);
+    .slice(-48);
 
-  for (const entry of cleaned) {
+  for (const [index, entry] of cleaned.entries()) {
     const fret = String(entry.fret);
-    const width = Math.max(3, fret.length + 1);
+    const next = cleaned[index + 1];
+    const duration = Math.max(0.25, (next?.start ?? entry.end + 0.35) - entry.start);
+    const width = Math.max(3, Math.min(10, Math.round(duration * 5)), fret.length + 1);
     for (const name of strings) {
       rows[name] += name === entry.string ? fret.padEnd(width, "-") : "-".repeat(width);
     }
+    const marker = `${entry.start.toFixed(1)}s`;
+    timeRow += marker.length <= width ? marker.padEnd(width, "-") : `${Math.round(entry.start)}s`.padEnd(width, "-");
   }
 
   const notes = cleaned.map((entry) => `${entry.label} ${entry.start.toFixed(1)}s`).join("  ");
-  ui.guitarTab.textContent = `${strings.map((name) => rows[name]).join("\n")}\n\nAblauf: ${notes || "Noch keine spielbaren Noten erkannt."}`;
+  ui.guitarTab.textContent = `${timeRow}\n${strings.map((name) => rows[name]).join("\n")}\n\nAblauf: ${notes || "Noch keine spielbaren Noten erkannt."}`;
+}
+
+function playableNotes(limit = 16) {
+  return noteTimeline
+    .filter((entry) => entry.string !== "-" && entry.fret !== "-")
+    .slice(-limit);
+}
+
+function renderPlaySteps() {
+  const notes = playableNotes();
+  if (!notes.length) {
+    ui.playSteps.innerHTML = `<li>Druecke auf Zuhoeren und spiele den Song ab.</li>`;
+    return;
+  }
+
+  ui.playSteps.innerHTML = notes
+    .map((entry, index) => {
+      const next = notes[index + 1];
+      const holdFor = Math.max(0.25, (next?.start ?? entry.end + 0.35) - entry.start);
+      return `<li><strong>${entry.start.toFixed(1)}s</strong> ${entry.string}-Saite, Bund ${entry.fret}, Note ${entry.label}, ca. ${holdFor.toFixed(1)}s halten</li>`;
+    })
+    .join("");
 }
 
 function stopListening() {
