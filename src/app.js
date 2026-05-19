@@ -33,6 +33,7 @@ const ui = {
   permissionError: document.querySelector("#permissionError"),
   levelBar: document.querySelector("#levelBar"),
   levelText: document.querySelector("#levelText"),
+  songName: document.querySelector("#songName"),
   chordList: document.querySelector("#chordList"),
   guitarTab: document.querySelector("#guitarTab"),
 };
@@ -42,6 +43,8 @@ let analyser = null;
 let stream = null;
 let animationId = null;
 let startedAt = 0;
+let lastSignalAt = 0;
+let lastPitchAt = 0;
 let noteTimeline = [];
 let activeTimelineNote = null;
 let state = freshState();
@@ -67,25 +70,27 @@ function detectPitch(buffer, sampleRate) {
   let rms = 0;
   for (let i = 0; i < buffer.length; i += 1) rms += buffer[i] * buffer[i];
   rms = Math.sqrt(rms / buffer.length);
-  if (rms < 0.012) return null;
+  if (rms < 0.006) return null;
 
-  const correlations = new Array(buffer.length).fill(0);
-  for (let lag = 0; lag < buffer.length; lag += 1) {
-    for (let i = 0; i < buffer.length - lag; i += 1) correlations[lag] += buffer[i] * buffer[i + lag];
-  }
+  const minLag = Math.floor(sampleRate / 1200);
+  const maxLag = Math.min(Math.floor(sampleRate / 65), buffer.length - 1);
+  let bestLag = -1;
+  let bestCorrelation = 0;
 
-  let d = 0;
-  while (correlations[d] > correlations[d + 1]) d += 1;
-  let maxValue = -1;
-  let maxPosition = -1;
-  for (let i = d; i < correlations.length; i += 1) {
-    if (correlations[i] > maxValue) {
-      maxValue = correlations[i];
-      maxPosition = i;
+  for (let lag = minLag; lag <= maxLag; lag += 1) {
+    let correlation = 0;
+    for (let i = 0; i < buffer.length - lag; i += 1) {
+      correlation += buffer[i] * buffer[i + lag];
+    }
+    correlation /= buffer.length - lag;
+    if (correlation > bestCorrelation) {
+      bestCorrelation = correlation;
+      bestLag = lag;
     }
   }
-  if (maxPosition <= 0) return null;
-  const frequency = sampleRate / maxPosition;
+
+  if (bestLag <= 0 || bestCorrelation < 0.002) return null;
+  const frequency = sampleRate / bestLag;
   if (frequency < 65 || frequency > 1200) return null;
   return { frequency, rms };
 }
@@ -149,6 +154,7 @@ function resetAnalysis() {
   startedAt = audioContext ? performance.now() : 0;
   ui.currentNote.textContent = "--";
   ui.currentFrequency.textContent = audioContext ? "Hoert zu" : "Bereit";
+  ui.songName.textContent = "Song-Erkennung ist ohne externen Erkennungsdienst noch nicht aktiv.";
   ui.levelBar.style.width = "0%";
   ui.levelText.textContent = "0%";
   setWave([]);
@@ -234,6 +240,7 @@ function analyzeFrame() {
   ui.levelBar.style.width = `${Math.round(level * 100)}%`;
   ui.levelText.textContent = `${Math.round(level * 100)}%`;
   setWave(Array.from(timeData.filter((_, index) => index % 18 === 0)).slice(0, 80));
+  if (rms > 0.01) lastSignalAt = performance.now();
 
   if (pitch) {
     const midi = frequencyToMidi(pitch.frequency);
@@ -241,9 +248,19 @@ function analyzeFrame() {
     const positions = guitarPositions(midi);
     ui.currentNote.textContent = note.label;
     ui.currentFrequency.textContent = `${pitch.frequency.toFixed(1)} Hz`;
+    lastPitchAt = performance.now();
     addTimelineNote(note, midi, pitch.frequency, positions);
     state.histogram[note.index] += 1;
     state.samples += 1;
+  } else if (audioContext) {
+    const now = performance.now();
+    if (now - startedAt > 1800 && now - lastSignalAt > 1600) {
+      ui.currentNote.textContent = "--";
+      ui.currentFrequency.textContent = "Kein Ton am Mikrofon";
+    } else if (now - lastPitchAt > 900 && now - lastSignalAt < 1000) {
+      ui.currentNote.textContent = "--";
+      ui.currentFrequency.textContent = "Signal da, suche Note";
+    }
   }
 
   render();
@@ -260,10 +277,14 @@ async function startListening() {
     audioContext = new AudioContext();
     const source = audioContext.createMediaStreamSource(stream);
     analyser = audioContext.createAnalyser();
-    analyser.fftSize = 4096;
+    analyser.fftSize = 2048;
     analyser.smoothingTimeConstant = 0.72;
     source.connect(analyser);
     startedAt = performance.now();
+    lastSignalAt = startedAt;
+    lastPitchAt = 0;
+    ui.currentNote.textContent = "--";
+    ui.currentFrequency.textContent = "Hoert zu";
     ui.listenButton.innerHTML = `<span aria-hidden="true">x</span><span>Stoppen</span>`;
     animationId = requestAnimationFrame(analyzeFrame);
   } catch (error) {
