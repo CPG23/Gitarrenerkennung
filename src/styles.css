@@ -1,0 +1,401 @@
+:root {
+  color: #15212a;
+  background: #f5f3ee;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+button {
+  font: inherit;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.85fr) minmax(420px, 1.15fr);
+  gap: 0;
+  min-height: 100vh;
+}
+
+.listen-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 22px;
+  min-height: 100vh;
+  padding: 34px;
+  color: #f8fafc;
+  background:
+    radial-gradient(circle at 25% 12%, rgba(20, 184, 166, 0.36), transparent 28%),
+    linear-gradient(145deg, #18232d 0%, #202926 48%, #3c2f25 100%);
+}
+
+.brand-row,
+.panel-title,
+.control-row,
+.meter-row {
+  display: flex;
+  align-items: center;
+}
+
+.brand-row {
+  gap: 16px;
+}
+
+.brand-mark {
+  display: grid;
+  flex: 0 0 54px;
+  width: 54px;
+  height: 54px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: clamp(2.1rem, 5vw, 4.8rem);
+  line-height: 1.08;
+  letter-spacing: 0;
+}
+
+.brand-row p,
+.music-type p,
+.stat-panel p,
+.empty,
+.guitar-help p {
+  color: rgba(21, 33, 42, 0.68);
+}
+
+.listen-panel .brand-row p {
+  margin-top: 8px;
+  color: rgba(248, 250, 252, 0.74);
+}
+
+.stage {
+  position: relative;
+  display: grid;
+  min-height: 300px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+    rgba(255, 255, 255, 0.06);
+  background-size: 42px 42px;
+}
+
+.wave {
+  position: absolute;
+  inset: 8%;
+  width: 84%;
+  height: 84%;
+  opacity: 0.95;
+  filter: drop-shadow(0 16px 32px rgba(0, 0, 0, 0.24));
+}
+
+.note-orbit {
+  position: relative;
+  display: grid;
+  width: min(184px, 54vw);
+  aspect-ratio: 1;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-radius: 999px;
+  background: rgba(9, 14, 18, 0.54);
+  box-shadow: inset 0 0 70px rgba(20, 184, 166, 0.2);
+}
+
+.note-orbit span {
+  font-size: clamp(2.4rem, 8vw, 4.7rem);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.note-orbit small {
+  align-self: start;
+  margin-top: -38px;
+  color: rgba(248, 250, 252, 0.66);
+}
+
+.control-row {
+  gap: 12px;
+}
+
+.primary-action,
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 52px;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.primary-action {
+  gap: 10px;
+  min-width: 160px;
+  padding: 0 22px;
+  color: #122018;
+  font-weight: 800;
+  background: #fbbf24;
+}
+
+.icon-button {
+  width: 52px;
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.error {
+  padding: 12px 14px;
+  color: #fee2e2;
+  border: 1px solid rgba(248, 113, 113, 0.42);
+  border-radius: 8px;
+  background: rgba(127, 29, 29, 0.36);
+}
+
+.meter-row {
+  gap: 10px;
+}
+
+.meter {
+  flex: 1;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #14b8a6, #fbbf24, #ef4444);
+  transition: width 120ms ease;
+}
+
+.meter-row strong {
+  width: 44px;
+  text-align: right;
+}
+
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  gap: 18px;
+  padding: 34px;
+}
+
+.panel {
+  min-width: 0;
+  padding: 22px;
+  border: 1px solid #ddd7ca;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.62);
+  box-shadow: 0 18px 55px rgba(22, 31, 39, 0.08);
+}
+
+.panel-title {
+  gap: 9px;
+  margin-bottom: 16px;
+  color: #426055;
+}
+
+h2 {
+  font-size: 0.95rem;
+  text-transform: uppercase;
+}
+
+.music-type,
+.notes-panel,
+.chord-panel {
+  grid-column: span 2;
+}
+
+.music-type strong,
+.stat-panel strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: clamp(1.6rem, 4vw, 2.5rem);
+  line-height: 1.05;
+}
+
+.note-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+  gap: 10px;
+}
+
+.note-card {
+  display: grid;
+  gap: 4px;
+  min-height: 76px;
+  padding: 14px;
+  border-radius: 8px;
+  background: #eaf4f1;
+}
+
+.note-card strong {
+  font-size: 1.55rem;
+}
+
+.note-card span,
+.chord-card span,
+.positions span {
+  color: rgba(21, 33, 42, 0.62);
+  font-size: 0.92rem;
+}
+
+.guitar-help {
+  display: grid;
+  gap: 12px;
+}
+
+.positions,
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.positions span,
+.chips span {
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: #fff4d3;
+}
+
+.chord-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.chord-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 8px;
+  background: #f7f3e8;
+}
+
+.chord-card strong {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 1.18rem;
+}
+
+.chord-box {
+  display: grid;
+  grid-template-columns: repeat(6, 13px);
+  gap: 2px;
+  flex: 0 0 auto;
+  padding: 8px;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.string-track {
+  position: relative;
+  display: grid;
+  grid-template-rows: 14px repeat(4, 12px);
+  justify-items: center;
+  color: #41515a;
+  font-size: 0.7rem;
+}
+
+.string-track::after {
+  content: "";
+  position: absolute;
+  top: 16px;
+  bottom: 0;
+  width: 1px;
+  background: #9ca3af;
+}
+
+.string-track i {
+  width: 10px;
+  height: 10px;
+  border-top: 1px solid #cbd5e1;
+}
+
+.string-track .finger {
+  z-index: 1;
+  border: 0;
+  border-radius: 999px;
+  background: #ef4444;
+}
+
+.muted {
+  color: #b91c1c;
+}
+
+.open {
+  color: #166534;
+}
+
+.chips span {
+  color: #12312b;
+  font-weight: 800;
+  background: #d9f4eb;
+}
+
+@media (max-width: 900px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .listen-panel {
+    min-height: auto;
+  }
+
+  .stage {
+    min-height: 280px;
+  }
+}
+
+@media (max-width: 640px) {
+  .listen-panel,
+  .results-grid {
+    padding: 20px;
+  }
+
+  .results-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .music-type,
+  .notes-panel,
+  .chord-panel {
+    grid-column: span 1;
+  }
+
+  .brand-row {
+    align-items: flex-start;
+  }
+}
