@@ -231,6 +231,8 @@ h2 {
 
 .music-type,
 .notes-panel,
+.song-panel,
+.tab-panel,
 .chord-panel {
   grid-column: span 2;
 }
@@ -365,6 +367,44 @@ h2 {
   background: #d9f4eb;
 }
 
+.timeline-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.timeline-item {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #eef6f5;
+}
+
+.timeline-item strong {
+  font-size: 1.2rem;
+}
+
+.timeline-item span,
+.timeline-item em {
+  color: rgba(21, 33, 42, 0.62);
+  font-size: 0.88rem;
+  font-style: normal;
+}
+
+.tab-panel pre {
+  min-height: 150px;
+  overflow-x: auto;
+  margin: 0;
+  padding: 16px;
+  border-radius: 8px;
+  color: #f8fafc;
+  background: #172027;
+  font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+
 @media (max-width: 900px) {
   .app-shell {
     grid-template-columns: 1fr;
@@ -391,6 +431,8 @@ h2 {
 
   .music-type,
   .notes-panel,
+  .song-panel,
+  .tab-panel,
   .chord-panel {
     grid-column: span 1;
   }
