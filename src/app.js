@@ -40,6 +40,8 @@ const ui = {
   guitarHelp: document.querySelector("#guitarHelp"),
   chordList: document.querySelector("#chordList"),
   toneChips: document.querySelector("#toneChips"),
+  songTimeline: document.querySelector("#songTimeline"),
+  guitarTab: document.querySelector("#guitarTab"),
 };
 
 let audioContext = null;
@@ -49,6 +51,8 @@ let animationId = null;
 let startedAt = 0;
 let lastPeak = 0;
 let detectedNotes = [];
+let noteTimeline = [];
+let activeTimelineNote = null;
 let state = freshState();
 
 function freshState() {
@@ -104,6 +108,11 @@ function guitarPositions(midi) {
     if (fret < 0 || fret > 15) return [];
     return [{ string: guitarString.name, fret }];
   }).slice(0, 4);
+}
+
+function preferredGuitarPosition(midi) {
+  const positions = guitarPositions(midi);
+  return positions.find((position) => position.fret <= 12) || positions[0] || null;
 }
 
 function chordScore(chord) {
@@ -182,10 +191,15 @@ function render() {
   ui.chordList.innerHTML = likelyChords.length
     ? likelyChords.map((chord) => `<div class="chord-card"><div><strong>${chord.name}</strong><span>Griff: ${chord.shape}</span></div>${chordBox(chord.shape)}</div>`).join("")
     : `<p class="empty">Fuer Akkorde braucht die App mehrere stabile Noten.</p>`;
+
+  renderSongTimeline();
+  renderGuitarTab();
 }
 
 function resetAnalysis() {
   detectedNotes = [];
+  noteTimeline = [];
+  activeTimelineNote = null;
   state = freshState();
   startedAt = audioContext ? performance.now() : 0;
   ui.currentNote.textContent = "--";
@@ -195,6 +209,74 @@ function resetAnalysis() {
   ui.guitarHelp.innerHTML = `<p class="empty">Sobald ein Ton erkannt wird, erscheinen hier spielbare Saiten und Buende.</p>`;
   setWave([]);
   render();
+}
+
+function addTimelineNote(note, midi, frequency, positions) {
+  const now = startedAt ? (performance.now() - startedAt) / 1000 : 0;
+  const playable = preferredGuitarPosition(midi);
+  const last = activeTimelineNote;
+
+  if (last && last.label === note.label) {
+    last.end = now;
+    last.frequency = frequency;
+    return;
+  }
+
+  if (last && now - last.start < 0.18) {
+    last.end = now;
+    return;
+  }
+
+  const entry = {
+    label: note.label,
+    noteName: NOTE_NAMES[note.index],
+    midi,
+    frequency,
+    start: now,
+    end: now,
+    string: playable?.string || "-",
+    fret: playable?.fret ?? "-",
+    positions,
+  };
+  noteTimeline.push(entry);
+  activeTimelineNote = entry;
+  if (noteTimeline.length > 96) noteTimeline.shift();
+}
+
+function renderSongTimeline() {
+  ui.songTimeline.innerHTML = noteTimeline.length
+    ? `<div class="timeline-list">${noteTimeline.slice(-24).map((entry) => `
+        <div class="timeline-item">
+          <strong>${entry.label}</strong>
+          <span>${entry.start.toFixed(1)}s</span>
+          <em>${entry.string}-Saite, Bund ${entry.fret}</em>
+        </div>
+      `).join("")}</div>`
+    : `<p class="empty">Starte eine Aufnahme. Die App sammelt dann eine spielbare Tonfolge.</p>`;
+}
+
+function renderGuitarTab() {
+  if (!noteTimeline.length) {
+    ui.guitarTab.textContent = "Noch keine Tabulatur vorhanden.";
+    return;
+  }
+
+  const strings = ["e", "B", "G", "D", "A", "E"];
+  const rows = Object.fromEntries(strings.map((name) => [name, `${name}|`]));
+  const cleaned = noteTimeline
+    .filter((entry) => entry.string !== "-" && entry.fret !== "-")
+    .slice(-32);
+
+  for (const entry of cleaned) {
+    const fret = String(entry.fret);
+    const width = Math.max(3, fret.length + 1);
+    for (const name of strings) {
+      rows[name] += name === entry.string ? fret.padEnd(width, "-") : "-".repeat(width);
+    }
+  }
+
+  const notes = cleaned.map((entry) => `${entry.label}@${entry.start.toFixed(1)}s`).join("  ");
+  ui.guitarTab.textContent = `${strings.map((name) => rows[name]).join("\n")}\n\nNoten: ${notes || "Noch keine spielbaren Noten erkannt."}`;
 }
 
 function stopListening() {
@@ -241,6 +323,7 @@ function analyzeFrame() {
     ui.currentNote.textContent = note.label;
     ui.currentFrequency.textContent = `${pitch.frequency.toFixed(1)} Hz`;
     detectedNotes = [{ ...note, midi, frequency: pitch.frequency, positions }, ...detectedNotes.filter((item) => item.label !== note.label)].slice(0, 10);
+    addTimelineNote(note, midi, pitch.frequency, positions);
     state.histogram[note.index] += 1;
     state.samples += 1;
     state.lowEnergy = state.lowEnergy * 0.92 + lowEnergy * 0.08;
