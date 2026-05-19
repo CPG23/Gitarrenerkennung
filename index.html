@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Musik Lauscher</title>
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="listen-panel">
+        <div class="brand-row">
+          <div class="brand-mark" aria-hidden="true">~</div>
+          <div>
+            <h1>Musik Lauscher</h1>
+            <p>Hoert zu, erkennt Toene und uebersetzt sie in Gitarrenideen.</p>
+          </div>
+        </div>
+
+        <div class="stage">
+          <svg class="wave" viewBox="0 0 100 100" role="img" aria-label="Live-Wellenform">
+            <defs>
+              <linearGradient id="waveGradient" x1="0" x2="1">
+                <stop offset="0%" stop-color="#14b8a6" />
+                <stop offset="52%" stop-color="#f59e0b" />
+                <stop offset="100%" stop-color="#ef4444" />
+              </linearGradient>
+            </defs>
+            <path id="wavePath" fill="none" stroke="url(#waveGradient)" stroke-width="3.5" stroke-linecap="round" />
+          </svg>
+          <div class="note-orbit">
+            <span id="currentNote">--</span>
+            <small id="currentFrequency">Warte auf Ton</small>
+          </div>
+        </div>
+
+        <div class="control-row">
+          <button class="primary-action" id="listenButton">
+            <span aria-hidden="true">o</span>
+            <span>Zuhoeren</span>
+          </button>
+          <button class="icon-button" id="resetButton" aria-label="Analyse zuruecksetzen" title="Analyse zuruecksetzen">R</button>
+        </div>
+
+        <p class="error" id="permissionError" hidden></p>
+
+        <div class="meter-row">
+          <span aria-hidden="true">V</span>
+          <div class="meter"><span id="levelBar"></span></div>
+          <strong id="levelText">0%</strong>
+        </div>
+      </section>
+
+      <section class="results-grid">
+        <article class="panel music-type">
+          <div class="panel-title"><span aria-hidden="true">M</span><h2>Musikart</h2></div>
+          <strong id="musicType">Noch zu wenig Material</strong>
+          <p>Diese Einschaetzung entsteht lokal aus Tempo, Tonvielfalt und Energieverteilung.</p>
+        </article>
+
+        <article class="panel stat-panel">
+          <div class="panel-title"><span aria-hidden="true">T</span><h2>Tempo</h2></div>
+          <strong id="tempo">--</strong>
+          <p id="elapsed">Noch keine Aufnahme</p>
+        </article>
+
+        <article class="panel notes-panel">
+          <div class="panel-title"><span aria-hidden="true">N</span><h2>Erkannte Noten</h2></div>
+          <div class="note-list" id="noteList">
+            <p class="empty">Druecke auf Zuhoeren und spiele Musik in der Naehe des Mikrofons.</p>
+          </div>
+        </article>
+
+        <article class="panel guitar-panel">
+          <div class="panel-title"><span aria-hidden="true">G</span><h2>Auf Gitarre spielen</h2></div>
+          <div id="guitarHelp">
+            <p class="empty">Sobald ein Ton erkannt wird, erscheinen hier spielbare Saiten und Buende.</p>
+          </div>
+        </article>
+
+        <article class="panel chord-panel">
+          <div class="panel-title"><span aria-hidden="true">A</span><h2>Moegliche Akkorde</h2></div>
+          <div class="chord-list" id="chordList">
+            <p class="empty">Fuer Akkorde braucht die App mehrere stabile Noten.</p>
+          </div>
+        </article>
+
+        <article class="panel scale-panel">
+          <div class="panel-title"><span aria-hidden="true">S</span><h2>Tonmaterial</h2></div>
+          <div class="chips" id="toneChips"><span>--</span></div>
+        </article>
+      </section>
+    </main>
+    <script type="module" src="./src/app.js"></script>
+  </body>
+</html>
