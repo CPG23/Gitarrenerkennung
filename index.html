@@ -3,7 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#18232d" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Gitarrenerkennung" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="description" content="Song erkennen und als spielbare Gitarrenhilfe anzeigen." />
     <title>Musik Lauscher</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./icons/icon-192.png" />
     <link rel="stylesheet" href="./src/styles.css" />
   </head>
   <body>
@@ -73,6 +81,14 @@
           </ol>
         </article>
 
+        <article class="panel install-panel">
+          <div class="panel-title"><span aria-hidden="true">+</span><h2>Als App installieren</h2></div>
+          <div class="install-row">
+            <p id="installHint">Android: App installieren. iPhone/iPad: Teilen oeffnen und Zum Home-Bildschirm waehlen.</p>
+            <button id="installButton" type="button" hidden>App installieren</button>
+          </div>
+        </article>
+
         <article class="panel chord-panel">
           <div class="panel-title"><span aria-hidden="true">A</span><h2>Akkorde fuer Begleitung</h2></div>
           <div class="chord-list" id="chordList">
@@ -81,6 +97,43 @@
         </article>
       </section>
     </main>
+    <script>
+      let installPrompt = null;
+      const installButton = document.querySelector("#installButton");
+      const installHint = document.querySelector("#installHint");
+
+      window.addEventListener("beforeinstallprompt", (event) => {
+        event.preventDefault();
+        installPrompt = event;
+        installButton.hidden = false;
+        installHint.textContent = "Diese WebApp kann auf Android und Desktop direkt installiert werden.";
+      });
+
+      installButton.addEventListener("click", async () => {
+        if (!installPrompt) return;
+        installPrompt.prompt();
+        const choice = await installPrompt.userChoice;
+        installPrompt = null;
+        installButton.hidden = true;
+        installHint.textContent = choice.outcome === "accepted"
+          ? "Installiert. Du findest die App jetzt auf deinem Geraet."
+          : "Installation abgebrochen. Du kannst sie spaeter wieder ueber den Browser installieren.";
+      });
+
+      window.addEventListener("appinstalled", () => {
+        installPrompt = null;
+        installButton.hidden = true;
+        installHint.textContent = "Installiert. Die App ist jetzt auf deinem Geraet verfuegbar.";
+      });
+
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("./sw.js").catch(() => {
+            installHint.textContent = "Installation ist hier nicht verfuegbar. Oeffne die App ueber HTTPS im Browser.";
+          });
+        });
+      }
+    </script>
     <script type="module" src="./src/app.js"></script>
   </body>
 </html>
