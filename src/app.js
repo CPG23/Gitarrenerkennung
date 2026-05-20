@@ -103,6 +103,33 @@ function detectPitch(buffer, sampleRate) {
   return { frequency, rms };
 }
 
+function detectDominantPitch(frequencyData, sampleRate) {
+  const binHz = sampleRate / (frequencyData.length * 2);
+  const minBin = Math.ceil(70 / binHz);
+  const maxBin = Math.min(Math.floor(1100 / binHz), frequencyData.length - 2);
+  let bestBin = -1;
+  let bestValue = 0;
+
+  for (let bin = minBin; bin <= maxBin; bin += 1) {
+    const value = frequencyData[bin];
+    const isPeak = value > frequencyData[bin - 1] && value >= frequencyData[bin + 1];
+    if (isPeak && value > bestValue) {
+      bestValue = value;
+      bestBin = bin;
+    }
+  }
+
+  if (bestBin < 0 || bestValue < 32) return null;
+  const left = frequencyData[bestBin - 1] || 0;
+  const center = frequencyData[bestBin] || 0;
+  const right = frequencyData[bestBin + 1] || 0;
+  const correction = (left - right) / Math.max(2 * (left - 2 * center + right), 1);
+  let frequency = (bestBin + Math.max(-0.5, Math.min(0.5, correction))) * binHz;
+  while (frequency > 880) frequency /= 2;
+  if (frequency < 65 || frequency > 1200) return null;
+  return { frequency, rms: bestValue / 255 };
+}
+
 function guitarPositions(midi) {
   return GUITAR_STRINGS.flatMap((guitarString) => {
     const fret = midi - guitarString.midi;
@@ -365,9 +392,11 @@ function stopListening() {
 function analyzeFrame() {
   if (!analyser || !audioContext) return;
   const timeData = new Float32Array(analyser.fftSize);
+  const frequencyData = new Uint8Array(analyser.frequencyBinCount);
   analyser.getFloatTimeDomainData(timeData);
+  analyser.getByteFrequencyData(frequencyData);
 
-  const pitch = detectPitch(timeData, audioContext.sampleRate);
+  const pitch = detectPitch(timeData, audioContext.sampleRate) || detectDominantPitch(frequencyData, audioContext.sampleRate);
   const rms = Math.sqrt(timeData.reduce((sum, value) => sum + value * value, 0) / timeData.length);
   const level = Math.min(1, rms * 7);
   ui.levelBar.style.width = `${Math.round(level * 100)}%`;
@@ -409,7 +438,7 @@ async function startListening() {
     audioContext = new AudioContext();
     const source = audioContext.createMediaStreamSource(stream);
     analyser = audioContext.createAnalyser();
-    analyser.fftSize = 2048;
+    analyser.fftSize = 4096;
     analyser.smoothingTimeConstant = 0.72;
     source.connect(analyser);
     startedAt = performance.now();
