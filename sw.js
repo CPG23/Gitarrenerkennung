@@ -1,4 +1,4 @@
-const CACHE_NAME = "gitarrenerkennung-v5";
+const CACHE_NAME = "gitarrenerkennung-v6";
 const ASSETS = [
   "./",
   "./index.html",
