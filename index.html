@@ -81,14 +81,6 @@
           </ol>
         </article>
 
-        <article class="panel install-panel">
-          <div class="panel-title"><span aria-hidden="true">+</span><h2>Als App installieren</h2></div>
-          <div class="install-row">
-            <p id="installHint">Android: App installieren. iPhone/iPad: Teilen oeffnen und Zum Home-Bildschirm waehlen.</p>
-            <button id="installButton" type="button" hidden>App installieren</button>
-          </div>
-        </article>
-
         <article class="panel chord-panel">
           <div class="panel-title"><span aria-hidden="true">A</span><h2>Akkorde fuer Begleitung</h2></div>
           <div class="chord-list" id="chordList">
@@ -97,16 +89,46 @@
         </article>
       </section>
     </main>
+    <aside class="install-popup" id="installPopup" hidden>
+      <button class="install-close" id="installLaterButton" type="button" aria-label="Installationshinweis schliessen">x</button>
+      <strong>Als App installieren?</strong>
+      <p id="installHint">Android: installieren. iPhone/iPad: Teilen oeffnen und Zum Home-Bildschirm waehlen.</p>
+      <div class="install-actions">
+        <button class="install-primary" id="installButton" type="button" hidden>Installieren</button>
+        <button class="install-secondary" id="installDismissButton" type="button">Nicht mehr anzeigen</button>
+      </div>
+    </aside>
     <script>
       let installPrompt = null;
+      const installPopup = document.querySelector("#installPopup");
       const installButton = document.querySelector("#installButton");
       const installHint = document.querySelector("#installHint");
+      const installLaterButton = document.querySelector("#installLaterButton");
+      const installDismissButton = document.querySelector("#installDismissButton");
+      const installDismissedKey = "gitarrenerkennung-install-dismissed";
+
+      function isStandaloneApp() {
+        return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
+      }
+
+      function canShowInstallPopup() {
+        return !isStandaloneApp() && localStorage.getItem(installDismissedKey) !== "yes";
+      }
+
+      function showInstallPopup() {
+        if (canShowInstallPopup()) installPopup.hidden = false;
+      }
+
+      function hideInstallPopup() {
+        installPopup.hidden = true;
+      }
 
       window.addEventListener("beforeinstallprompt", (event) => {
         event.preventDefault();
         installPrompt = event;
         installButton.hidden = false;
         installHint.textContent = "Diese WebApp kann auf Android und Desktop direkt installiert werden.";
+        showInstallPopup();
       });
 
       installButton.addEventListener("click", async () => {
@@ -118,12 +140,23 @@
         installHint.textContent = choice.outcome === "accepted"
           ? "Installiert. Du findest die App jetzt auf deinem Geraet."
           : "Installation abgebrochen. Du kannst sie spaeter wieder ueber den Browser installieren.";
+        if (choice.outcome === "accepted") localStorage.setItem(installDismissedKey, "yes");
+        if (choice.outcome === "accepted") hideInstallPopup();
+      });
+
+      installLaterButton.addEventListener("click", hideInstallPopup);
+
+      installDismissButton.addEventListener("click", () => {
+        localStorage.setItem(installDismissedKey, "yes");
+        hideInstallPopup();
       });
 
       window.addEventListener("appinstalled", () => {
         installPrompt = null;
         installButton.hidden = true;
+        localStorage.setItem(installDismissedKey, "yes");
         installHint.textContent = "Installiert. Die App ist jetzt auf deinem Geraet verfuegbar.";
+        hideInstallPopup();
       });
 
       if ("serviceWorker" in navigator) {
@@ -131,6 +164,7 @@
           navigator.serviceWorker.register("./sw.js").catch(() => {
             installHint.textContent = "Installation ist hier nicht verfuegbar. Oeffne die App ueber HTTPS im Browser.";
           });
+          setTimeout(showInstallPopup, 1200);
         });
       }
     </script>
