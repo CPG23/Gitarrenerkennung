@@ -74,6 +74,13 @@ function midiToNote(midi) {
   return { index: noteIndex, label: `${NOTE_NAMES[noteIndex]}${octave}` };
 }
 
+function fitMidiToGuitarRange(midi) {
+  let playableMidi = midi;
+  while (playableMidi > 79) playableMidi -= 12;
+  while (playableMidi < 40) playableMidi += 12;
+  return playableMidi;
+}
+
 function detectPitch(buffer, sampleRate) {
   let rms = 0;
   for (let i = 0; i < buffer.length; i += 1) rms += buffer[i] * buffer[i];
@@ -286,10 +293,12 @@ function renderSongLinks(artist, title) {
 
 function addTimelineNote(note, midi, frequency, positions) {
   const now = startedAt ? (performance.now() - startedAt) / 1000 : 0;
-  const playable = preferredGuitarPosition(midi);
+  const playableMidi = fitMidiToGuitarRange(midi);
+  const playableNote = midiToNote(playableMidi);
+  const playable = preferredGuitarPosition(playableMidi);
   const last = activeTimelineNote;
 
-  if (last && last.label === note.label && now - last.start < MAX_SAME_NOTE_SECONDS) {
+  if (last && last.midi === playableMidi && now - last.start < MAX_SAME_NOTE_SECONDS) {
     last.end = now;
     last.frequency = frequency;
     return;
@@ -303,9 +312,11 @@ function addTimelineNote(note, midi, frequency, positions) {
   if (last) last.end = Math.max(last.end, now);
 
   const entry = {
-    label: note.label,
-    noteName: NOTE_NAMES[note.index],
-    midi,
+    label: playableNote.label,
+    noteName: NOTE_NAMES[playableNote.index],
+    sourceLabel: note.label,
+    midi: playableMidi,
+    sourceMidi: midi,
     frequency,
     start: now,
     end: now,
