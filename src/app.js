@@ -7,6 +7,9 @@ const GUITAR_STRINGS = [
   { name: "A", midi: 45 },
   { name: "E", midi: 40 },
 ];
+const MIN_NOTE_SECONDS = 0.16;
+const MAX_SAME_NOTE_SECONDS = 0.9;
+const SILENCE_END_SECONDS = 0.45;
 const CHORDS = [
   { name: "C Dur", notes: [0, 4, 7], shape: "x32010" },
   { name: "D Dur", notes: [2, 6, 9], shape: "xx0232" },
@@ -259,16 +262,18 @@ function addTimelineNote(note, midi, frequency, positions) {
   const playable = preferredGuitarPosition(midi);
   const last = activeTimelineNote;
 
-  if (last && last.label === note.label) {
+  if (last && last.label === note.label && now - last.start < MAX_SAME_NOTE_SECONDS) {
     last.end = now;
     last.frequency = frequency;
     return;
   }
 
-  if (last && now - last.start < 0.18) {
+  if (last && now - last.start < MIN_NOTE_SECONDS) {
     last.end = now;
     return;
   }
+
+  if (last) last.end = Math.max(last.end, now);
 
   const entry = {
     label: note.label,
@@ -283,7 +288,14 @@ function addTimelineNote(note, midi, frequency, positions) {
   };
   noteTimeline.push(entry);
   activeTimelineNote = entry;
-  if (noteTimeline.length > 96) noteTimeline.shift();
+  if (noteTimeline.length > 160) noteTimeline.shift();
+}
+
+function closeActiveNote() {
+  if (!activeTimelineNote || !startedAt) return;
+  const now = (performance.now() - startedAt) / 1000;
+  activeTimelineNote.end = Math.max(activeTimelineNote.end, now);
+  activeTimelineNote = null;
 }
 
 function renderGuitarTab() {
@@ -297,7 +309,7 @@ function renderGuitarTab() {
   let timeRow = "t|";
   const cleaned = noteTimeline
     .filter((entry) => entry.string !== "-" && entry.fret !== "-")
-    .slice(-48);
+    .slice(-80);
 
   for (const [index, entry] of cleaned.entries()) {
     const fret = String(entry.fret);
@@ -315,7 +327,7 @@ function renderGuitarTab() {
   ui.guitarTab.textContent = `${timeRow}\n${strings.map((name) => rows[name]).join("\n")}\n\nAblauf: ${notes || "Noch keine spielbaren Noten erkannt."}`;
 }
 
-function playableNotes(limit = 16) {
+function playableNotes(limit = 32) {
   return noteTimeline
     .filter((entry) => entry.string !== "-" && entry.fret !== "-")
     .slice(-limit);
@@ -339,6 +351,7 @@ function renderPlaySteps() {
 
 function stopListening() {
   cancelAnimationFrame(animationId);
+  closeActiveNote();
   if (stream) stream.getTracks().forEach((track) => track.stop());
   if (audioContext) audioContext.close();
   stream = null;
@@ -374,6 +387,7 @@ function analyzeFrame() {
     state.samples += 1;
   } else if (audioContext) {
     const now = performance.now();
+    if (activeTimelineNote && now - lastPitchAt > SILENCE_END_SECONDS * 1000) closeActiveNote();
     if (now - startedAt > 1800 && now - lastSignalAt > 1600) {
       ui.currentNote.textContent = "--";
       ui.currentFrequency.textContent = "Kein Ton am Mikrofon";
